@@ -10,6 +10,8 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300;9..144,400;9..144,500;9..144,700;9..144,900&family=Space+Grotesk:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+<!-- Vercel Analytics -->
+<script defer src="/_vercel/insights/script.js"></script>
 <style>
   :root {
     --bg: #0a0907;
@@ -253,7 +255,6 @@
     border-radius: 12px;
     padding: 20px;
     text-align: center;
-    cursor: pointer;
     transition: all 0.2s;
     background: rgba(245, 158, 11, 0.025);
   }
@@ -446,6 +447,13 @@
   .text-accent-bright { color: var(--accent-bright); }
   .text-success { color: var(--success); }
   .text-danger { color: var(--danger); }
+
+  /* Grouped Structure Styles */
+  .chapter-block { margin-bottom: 2rem; }
+  .chapter-title { display: flex; align-items: center; gap: 0.5rem; font-family: 'Fraunces', serif; font-weight: 700; font-size: 1.5rem; color: var(--accent-bright); margin-bottom: 1rem; border-bottom: 1px solid var(--border); padding-bottom: 0.5rem; }
+  .topic-container { margin-left: 0.5rem; border-left: 2px solid var(--border); padding-left: 1.25rem; margin-bottom: 1.5rem; }
+  @media (min-width: 768px) { .topic-container { margin-left: 1rem; padding-left: 1.5rem; } }
+  .topic-title { display: flex; align-items: center; gap: 0.5rem; font-family: 'Fraunces', serif; font-weight: 600; font-size: 1.1rem; color: var(--fg); margin-bottom: 0.75rem; }
 </style>
 </head>
 <body>
@@ -475,12 +483,14 @@
       </div>
     </a>
     <div class="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
+      <!-- Export Button: Uses upload icon (Exporting data OUT of the app) -->
       <button class="btn btn-ghost" onclick="exportData()" title="Export your data">
-        <i data-lucide="download" class="w-4 h-4"></i>
+        <i data-lucide="upload" class="w-4 h-4"></i>
         <span class="hidden md:inline">Export</span>
       </button>
+      <!-- Import Button: Uses download icon (Importing data INTO the app) -->
       <label class="btn btn-ghost cursor-pointer" title="Import data">
-        <i data-lucide="upload" class="w-4 h-4"></i>
+        <i data-lucide="download" class="w-4 h-4"></i>
         <span class="hidden md:inline">Import</span>
         <input type="file" accept=".json" class="hidden" onchange="importData(event)">
       </label>
@@ -593,12 +603,14 @@
         <div class="mb-4 sm:mb-6">
           <label class="block text-[10px] uppercase tracking-widest text-[var(--muted)] mb-2 font-semibold">Question Photo <span class="text-[var(--muted)] normal-case">(optional)</span></label>
           <div class="drop-zone" id="dropZone">
-            <!-- Explicitly allows normal photos like .jpeg, .jpg, .png -->
             <input type="file" id="imageInput" accept="image/jpeg,image/jpg,image/png,image/webp,image/*" class="hidden" onchange="handleImageUpload(event)">
-            <div id="dropZoneContent">
+            <div id="dropZoneContent" class="cursor-pointer" onclick="document.getElementById('imageInput').click()">
               <i data-lucide="image-plus" class="w-7 h-7 sm:w-8 sm:h-8 mx-auto mb-2 text-[var(--accent)]"></i>
-              <p class="text-sm text-[var(--fg-2)]">Click to upload or drag &amp; drop</p>
+              <p class="text-sm text-[var(--fg-2)]">Drag &amp; drop, or click to browse</p>
               <p class="text-xs text-[var(--muted)] mt-1">JPG, JPEG, PNG · auto-compressed locally</p>
+              <div class="flex justify-center gap-2 mt-4">
+                <button type="button" class="btn btn-ghost" onclick="event.stopPropagation(); openCamera();"><i data-lucide="camera" class="w-4 h-4"></i>Take Live Photo</button>
+              </div>
             </div>
             <div id="imagePreview" class="hidden">
               <img id="previewImg" src="" alt="Preview" class="max-h-48 sm:max-h-52 mx-auto rounded-lg mb-3 border border-[var(--border)]">
@@ -626,7 +638,7 @@
     <div class="section-heading">
       <div>
         <h3>Your Mistake Vault</h3>
-        <p class="text-xs sm:text-sm text-[var(--muted)] mt-1">Revisit, search, and conquer them one by one.</p>
+        <p class="text-xs sm:text-sm text-[var(--muted)] mt-1">Structured chapter-wise &amp; topic-wise.</p>
       </div>
       <span class="sub" id="vaultCount">0 entries</span>
     </div>
@@ -660,7 +672,7 @@
       </button>
     </div>
 
-    <div id="mistakesGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4"></div>
+    <div id="mistakesGrid"></div>
   </section>
 
   <!-- Responsive Motivation Wall -->
@@ -707,6 +719,21 @@
 
 <div class="modal-overlay" id="editModal" onclick="if(event.target===this) closeModal('editModal')">
   <div class="modal" id="editModalContent"></div>
+</div>
+
+<div class="modal-overlay" id="cameraModal" onclick="if(event.target===this) closeCamera()">
+  <div class="modal" style="max-width: 600px">
+    <div class="flex items-start justify-between mb-4">
+      <h3 class="font-display text-xl font-bold">Take Live Photo</h3>
+      <button class="btn btn-ghost btn-icon" onclick="closeCamera()"><i data-lucide="x" class="w-4 h-4"></i></button>
+    </div>
+    <video id="cameraVideo" autoplay playsinline class="w-full rounded-xl border border-[var(--border)] bg-black mb-4"></video>
+    <canvas id="cameraCanvas" class="hidden"></canvas>
+    <div class="flex gap-2">
+      <button class="btn btn-ghost flex-1" onclick="closeCamera()">Cancel</button>
+      <button class="btn btn-primary flex-1" onclick="capturePhoto()"><i data-lucide="camera" class="w-4 h-4"></i> Capture Photo</button>
+    </div>
+  </div>
 </div>
 
 <div class="modal-overlay" id="confirmModal" onclick="if(event.target===this) closeModal('confirmModal')">
@@ -791,6 +818,7 @@ let currentImageData = null;
 let editImagePreview = null;
 let currentQuoteIndex = Math.floor(Math.random() * QUOTES.length);
 let confirmCallback = null;
+let cameraStream = null;
 
 function loadState() {
   try {
@@ -917,6 +945,43 @@ function clearImagePreview(event) {
   if (preview) preview.src = '';
   document.getElementById('dropZoneContent').classList.remove('hidden');
   document.getElementById('imagePreview').classList.add('hidden');
+}
+
+async function openCamera() {
+  const modal = document.getElementById('cameraModal');
+  modal.classList.add('active');
+  try {
+    cameraStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+    document.getElementById('cameraVideo').srcObject = cameraStream;
+  } catch (err) {
+    showToast('Could not access camera. Please grant permission.', 'error');
+    closeCamera();
+  }
+}
+
+function capturePhoto() {
+  const video = document.getElementById('cameraVideo');
+  const canvas = document.getElementById('cameraCanvas');
+  canvas.width = video.videoWidth;
+  canvas.height = video.videoHeight;
+  const ctx = canvas.getContext('2d');
+  ctx.drawImage(video, 0, 0);
+  const data = canvas.toDataURL('image/jpeg', 0.8);
+  
+  currentImageData = data;
+  document.getElementById('previewImg').src = data;
+  document.getElementById('dropZoneContent').classList.add('hidden');
+  document.getElementById('imagePreview').classList.remove('hidden');
+  closeCamera();
+  showToast('Live photo captured', 'success');
+}
+
+function closeCamera() {
+  if (cameraStream) {
+    cameraStream.getTracks().forEach(track => track.stop());
+    cameraStream = null;
+  }
+  document.getElementById('cameraModal').classList.remove('active');
 }
 
 function submitAddMistake() {
@@ -1089,13 +1154,6 @@ function renderMistakes() {
     filtered = filtered.filter(m => state.filters.status === 'revised' ? m.revised : !m.revised);
   }
 
-  switch (state.filters.sort) {
-    case 'newest': filtered.sort((a, b) => b.createdAt - a.createdAt); break;
-    case 'oldest': filtered.sort((a, b) => a.createdAt - b.createdAt); break;
-    case 'chapter': filtered.sort((a, b) => a.chapter.localeCompare(b.chapter) || b.createdAt - a.createdAt); break;
-    case 'revised': filtered.sort((a, b) => b.revisedCount - a.revisedCount || b.createdAt - a.createdAt); break;
-  }
-
   const countEl = document.getElementById('vaultCount');
   countEl.textContent = filtered.length + (filtered.length === 1 ? ' entry' : ' entries');
 
@@ -1115,7 +1173,61 @@ function renderMistakes() {
     return;
   }
 
-  grid.innerHTML = filtered.map((m, i) => renderMistakeCard(m, i)).join('');
+  // Group by Chapter -> Topic
+  const grouped = {};
+  filtered.forEach(m => {
+    const chap = m.chapter || 'Unknown';
+    const top = m.topic || 'General';
+    if (!grouped[chap]) grouped[chap] = {};
+    if (!grouped[chap][top]) grouped[chap][top] = [];
+    grouped[chap][top].push(m);
+  });
+
+  // Sort Chapters
+  let chapters = Object.keys(grouped).sort((a, b) => a.localeCompare(b));
+  if (state.filters.sort === 'newest') {
+    chapters.sort((a, b) => {
+      const maxA = Math.max(...Object.values(grouped[a]).flat().map(m => m.createdAt || 0));
+      const maxB = Math.max(...Object.values(grouped[b]).flat().map(m => m.createdAt || 0));
+      return maxB - maxA;
+    });
+  } else if (state.filters.sort === 'oldest') {
+    chapters.sort((a, b) => {
+      const minA = Math.min(...Object.values(grouped[a]).flat().map(m => m.createdAt || Infinity));
+      const minB = Math.min(...Object.values(grouped[b]).flat().map(m => m.createdAt || Infinity));
+      return minA - minB;
+    });
+  }
+
+  let html = '';
+  chapters.forEach(chap => {
+    html += `<div class="chapter-block">`;
+    html += `<h4 class="chapter-title"><i data-lucide="book-open" class="w-5 h-5"></i> ${escapeHtml(chap)}</h4>`;
+    html += `<div class="topic-container">`;
+    
+    let topics = Object.keys(grouped[chap]).sort((a, b) => a.localeCompare(b));
+    topics.forEach(top => {
+      let mistakes = grouped[chap][top];
+      
+      // Sort mistakes inside topics
+      if (state.filters.sort === 'newest') mistakes.sort((a,b) => b.createdAt - a.createdAt);
+      else if (state.filters.sort === 'oldest') mistakes.sort((a,b) => a.createdAt - b.createdAt);
+      else if (state.filters.sort === 'revised') mistakes.sort((a,b) => b.revisedCount - a.revisedCount);
+      else mistakes.sort((a,b) => b.createdAt - a.createdAt);
+
+      html += `<div class="mb-6">`;
+      html += `<h5 class="topic-title"><i data-lucide="tag" class="w-4 h-4 text-[var(--accent)]"></i> ${escapeHtml(top)} <span class="text-xs text-[var(--muted)] font-normal">(${mistakes.length})</span></h5>`;
+      html += `<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">`;
+      mistakes.forEach((m, i) => {
+        html += renderMistakeCard(m, i);
+      });
+      html += `</div></div>`;
+    });
+    
+    html += `</div></div>`;
+  });
+
+  grid.innerHTML = html;
   lucide.createIcons();
 }
 
@@ -1129,8 +1241,6 @@ function renderMistakeCard(m, index) {
   return `
     <article class="mistake-card ${m.revised ? 'revised' : ''}" style="animation: fadeInUp 0.45s ease-out ${Math.min(index * 0.04, 0.5)}s both">
       <div class="tag-list">
-        <span class="chip chip-chapter"><i data-lucide="bookmark" class="w-3 h-3"></i>${escapeHtml(m.chapter)}</span>
-        ${m.topic ? `<span class="chip chip-topic"><i data-lucide="tag" class="w-3 h-3"></i>${escapeHtml(m.topic)}</span>` : ''}
         <span class="chip ${m.revised ? 'chip-revised' : 'chip-pending'}">${m.revised ? 'Mastered' : 'Pending'}</span>
       </div>
 
@@ -1346,6 +1456,9 @@ function editMistake(id) {
           <i data-lucide="image-plus" class="w-7 h-7 mx-auto mb-2 text-[var(--accent)]"></i>
           <p class="text-sm text-[var(--fg-2)]">Click to upload or drag &amp; drop</p>
           <p class="text-xs text-[var(--muted)] mt-1">JPG, JPEG, PNG · auto-compressed locally</p>
+          <div class="flex justify-center gap-2 mt-4">
+            <button type="button" class="btn btn-ghost" onclick="event.stopPropagation(); openCamera();"><i data-lucide="camera" class="w-4 h-4"></i>Take Live Photo</button>
+          </div>
         </div>
       </div>
       <div class="flex gap-2 pt-4 border-t border-[var(--border)]">
@@ -1575,7 +1688,7 @@ function exportData() {
   a.click();
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
-  showToast('Backup downloaded.', 'success');
+  showToast('Backup exported successfully.', 'success');
 }
 
 function importData(event) {
@@ -1687,6 +1800,7 @@ function setupEventListeners() {
     if (e.key === 'Escape') {
       document.querySelectorAll('.modal-overlay.active').forEach(m => m.classList.remove('active'));
       document.querySelectorAll('.search-popover.active').forEach(p => p.classList.remove('active'));
+      closeCamera();
     }
     if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
       e.preventDefault();
@@ -1710,4 +1824,4 @@ function init() {
 document.addEventListener('DOMContentLoaded', init);
 </script>
 </body>
-  </html>
+</html>
