@@ -947,14 +947,43 @@ function clearImagePreview(event) {
   document.getElementById('imagePreview').classList.add('hidden');
 }
 
+// Explicit Camera Permission Handler
 async function openCamera() {
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+    showToast('Camera API not supported in this browser.', 'error');
+    return;
+  }
+
   const modal = document.getElementById('cameraModal');
+  const video = document.getElementById('cameraVideo');
+  
   modal.classList.add('active');
+  showToast('Requesting camera permission...', 'info');
+
   try {
-    cameraStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
-    document.getElementById('cameraVideo').srcObject = cameraStream;
+    // Request camera with specific constraints
+    cameraStream = await navigator.mediaDevices.getUserMedia({ 
+      video: { 
+        facingMode: 'environment', 
+        width: { ideal: 1280 }, 
+        height: { ideal: 720 } 
+      } 
+    });
+    
+    video.srcObject = cameraStream;
+    // Ensure video plays automatically after permission is granted
+    await video.play();
+    
   } catch (err) {
-    showToast('Could not access camera. Please grant permission.', 'error');
+    let msg = 'Could not access camera.';
+    if (err.name === 'NotAllowedError' || err.name === 'SecurityError') {
+      msg = 'Camera permission denied. Please enable it in your browser settings.';
+    } else if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
+      msg = 'No camera found on this device.';
+    } else if (err.name === 'NotReadableError' || err.name === 'TrackStartError') {
+      msg = 'Camera is already in use by another application.';
+    }
+    showToast(msg, 'error');
     closeCamera();
   }
 }
@@ -962,6 +991,12 @@ async function openCamera() {
 function capturePhoto() {
   const video = document.getElementById('cameraVideo');
   const canvas = document.getElementById('cameraCanvas');
+  
+  if (!video.videoWidth) {
+    showToast('Camera is still loading, please wait a moment.', 'info');
+    return;
+  }
+  
   canvas.width = video.videoWidth;
   canvas.height = video.videoHeight;
   const ctx = canvas.getContext('2d');
@@ -981,6 +1016,8 @@ function closeCamera() {
     cameraStream.getTracks().forEach(track => track.stop());
     cameraStream = null;
   }
+  const video = document.getElementById('cameraVideo');
+  if (video) video.srcObject = null;
   document.getElementById('cameraModal').classList.remove('active');
 }
 
