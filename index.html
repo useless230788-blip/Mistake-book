@@ -729,9 +729,10 @@
     </div>
     <video id="cameraVideo" autoplay playsinline muted class="w-full rounded-xl border border-[var(--border)] bg-black mb-4"></video>
     <canvas id="cameraCanvas" class="hidden"></canvas>
-    <div class="flex gap-2">
-      <button class="btn btn-ghost flex-1" onclick="closeCamera()">Cancel</button>
-      <button class="btn btn-primary flex-1" onclick="capturePhoto()"><i data-lucide="camera" class="w-4 h-4"></i> Capture Photo</button>
+    <div class="grid grid-cols-3 gap-2">
+      <button class="btn btn-ghost" onclick="closeCamera()">Cancel</button>
+      <button class="btn btn-ghost" onclick="switchCamera()" title="Switch Camera"><i data-lucide="switch-camera" class="w-4 h-4"></i><span class="hidden sm:inline">Flip</span></button>
+      <button class="btn btn-primary" onclick="capturePhoto()"><i data-lucide="camera" class="w-4 h-4"></i> Capture</button>
     </div>
   </div>
 </div>
@@ -819,6 +820,7 @@ let editImagePreview = null;
 let currentQuoteIndex = Math.floor(Math.random() * QUOTES.length);
 let confirmCallback = null;
 let cameraStream = null;
+let currentFacingMode = 'environment'; // Default to rear camera
 
 function loadState() {
   try {
@@ -968,7 +970,7 @@ async function openCamera() {
   try {
     // Simplified constraints to ensure the permission prompt appears on all devices
     cameraStream = await navigator.mediaDevices.getUserMedia({ 
-      video: true, 
+      video: { facingMode: currentFacingMode }, 
       audio: false 
     });
     
@@ -986,11 +988,29 @@ async function openCamera() {
     } else if (err.name === 'NotReadableError' || err.name === 'TrackStartError') {
       msg = 'Camera is already in use by another application.';
     } else if (err.name === 'OverconstrainedError') {
-      msg = 'Camera does not meet the required constraints.';
+      msg = 'Camera does not support switching modes.';
     }
     showToast(msg, 'error');
     closeCamera();
   }
+}
+
+function switchCamera() {
+  if (!cameraStream) return;
+  
+  // Toggle facing mode
+  currentFacingMode = currentFacingMode === 'environment' ? 'user' : 'environment';
+  
+  // Stop current tracks
+  if (cameraStream) {
+    cameraStream.getTracks().forEach(track => track.stop());
+    cameraStream = null;
+  }
+  
+  // Reopen camera
+  const video = document.getElementById('cameraVideo');
+  if (video) video.srcObject = null;
+  openCamera();
 }
 
 function capturePhoto() {
