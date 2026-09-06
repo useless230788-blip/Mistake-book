@@ -727,7 +727,7 @@
       <h3 class="font-display text-xl font-bold">Take Live Photo</h3>
       <button class="btn btn-ghost btn-icon" onclick="closeCamera()"><i data-lucide="x" class="w-4 h-4"></i></button>
     </div>
-    <video id="cameraVideo" autoplay playsinline class="w-full rounded-xl border border-[var(--border)] bg-black mb-4"></video>
+    <video id="cameraVideo" autoplay playsinline muted class="w-full rounded-xl border border-[var(--border)] bg-black mb-4"></video>
     <canvas id="cameraCanvas" class="hidden"></canvas>
     <div class="flex gap-2">
       <button class="btn btn-ghost flex-1" onclick="closeCamera()">Cancel</button>
@@ -949,6 +949,11 @@ function clearImagePreview(event) {
 
 // Explicit Camera Permission Handler
 async function openCamera() {
+  if (!window.isSecureContext) {
+    showToast('Camera access requires a secure (HTTPS) connection.', 'error');
+    return;
+  }
+  
   if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
     showToast('Camera API not supported in this browser.', 'error');
     return;
@@ -961,27 +966,27 @@ async function openCamera() {
   showToast('Requesting camera permission...', 'info');
 
   try {
-    // Request camera with specific constraints
+    // Simplified constraints to ensure the permission prompt appears on all devices
     cameraStream = await navigator.mediaDevices.getUserMedia({ 
-      video: { 
-        facingMode: 'environment', 
-        width: { ideal: 1280 }, 
-        height: { ideal: 720 } 
-      } 
+      video: true, 
+      audio: false 
     });
     
     video.srcObject = cameraStream;
-    // Ensure video plays automatically after permission is granted
+    // Ensure video plays automatically (muted is required for autoplay in some browsers)
+    video.muted = true;
     await video.play();
     
   } catch (err) {
     let msg = 'Could not access camera.';
     if (err.name === 'NotAllowedError' || err.name === 'SecurityError') {
-      msg = 'Camera permission denied. Please enable it in your browser settings.';
+      msg = 'Camera permission denied or blocked. Please allow camera access in your browser settings.';
     } else if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
       msg = 'No camera found on this device.';
     } else if (err.name === 'NotReadableError' || err.name === 'TrackStartError') {
       msg = 'Camera is already in use by another application.';
+    } else if (err.name === 'OverconstrainedError') {
+      msg = 'Camera does not meet the required constraints.';
     }
     showToast(msg, 'error');
     closeCamera();
