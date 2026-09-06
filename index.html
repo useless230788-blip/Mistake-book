@@ -5,6 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Mistake Book — Revise. Learn. Conquer.</title>
 <meta name="description" content="A personal vault of your academic mistakes. Capture, revise, and conquer.">
+<!-- PWA Manifest linked externally for PWABuilder compatibility -->
+<link rel="manifest" href="/manifest.json">
+<meta name="theme-color" content="#0a0907">
 <script src="https://cdn.tailwindcss.com"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -483,12 +486,10 @@
       </div>
     </a>
     <div class="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
-      <!-- Export Button: Uses upload icon (Exporting data OUT of the app) -->
       <button class="btn btn-ghost" onclick="exportData()" title="Export your data">
         <i data-lucide="upload" class="w-4 h-4"></i>
         <span class="hidden md:inline">Export</span>
       </button>
-      <!-- Import Button: Uses download icon (Importing data INTO the app) -->
       <label class="btn btn-ghost cursor-pointer" title="Import data">
         <i data-lucide="download" class="w-4 h-4"></i>
         <span class="hidden md:inline">Import</span>
@@ -968,9 +969,13 @@ async function openCamera() {
   showToast('Requesting camera permission...', 'info');
 
   try {
-    // Simplified constraints to ensure the permission prompt appears on all devices
+    // Request High-Quality Full HD video stream
     cameraStream = await navigator.mediaDevices.getUserMedia({ 
-      video: { facingMode: currentFacingMode }, 
+      video: { 
+        facingMode: currentFacingMode,
+        width: { ideal: 1920 },  // Request Full HD width
+        height: { ideal: 1080 }   // Request Full HD height
+      }, 
       audio: false 
     });
     
@@ -988,7 +993,7 @@ async function openCamera() {
     } else if (err.name === 'NotReadableError' || err.name === 'TrackStartError') {
       msg = 'Camera is already in use by another application.';
     } else if (err.name === 'OverconstrainedError') {
-      msg = 'Camera does not support switching modes.';
+      msg = 'Camera does not support the requested high-quality constraints.';
     }
     showToast(msg, 'error');
     closeCamera();
@@ -1022,11 +1027,14 @@ function capturePhoto() {
     return;
   }
   
+  // Set canvas to the high-resolution dimensions of the video stream
   canvas.width = video.videoWidth;
   canvas.height = video.videoHeight;
   const ctx = canvas.getContext('2d');
-  ctx.drawImage(video, 0, 0);
-  const data = canvas.toDataURL('image/jpeg', 0.8);
+  ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+  
+  // Export at 0.9 quality for crisp text
+  const data = canvas.toDataURL('image/jpeg', 0.9);
   
   currentImageData = data;
   document.getElementById('previewImg').src = data;
